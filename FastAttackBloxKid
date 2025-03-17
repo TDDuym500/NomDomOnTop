@@ -1,0 +1,74 @@
+local module = {
+    NextAttack = 0,
+    Distance = 55,
+    attackMobs = true,
+    attackPlayers = true,
+    AttackSpeed = 0.1 -- Chỉnh tốc độ đánh ở đây (càng nhỏ càng nhanh)
+}
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local player = Players.LocalPlayer
+
+function module:GetBladeHits()
+    local BladeHits = {}
+
+    -- Tấn công quái
+    if self.attackMobs then
+        for _, Enemy in ipairs(Workspace.Enemies:GetChildren()) do
+            if Enemy:FindFirstChild("HumanoidRootPart") and Enemy:FindFirstChild("Humanoid") and Enemy.Humanoid.Health > 0 then
+                table.insert(BladeHits, Enemy.HumanoidRootPart)
+            end
+        end
+    end
+
+    -- Tấn công người chơi khác
+    if self.attackPlayers then
+        for _, target in ipairs(Players:GetPlayers()) do
+            if target ~= player and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character:FindFirstChild("Humanoid") and target.Character.Humanoid.Health > 0 then
+                table.insert(BladeHits, target.Character.HumanoidRootPart)
+            end
+        end
+    end
+
+    return BladeHits
+end
+
+function module:attack()
+    local BladeHits = self:GetBladeHits()
+
+    -- Kích hoạt đòn đánh
+    ReplicatedStorage.Modules.Net:WaitForChild("RE/RegisterAttack"):FireServer(0)
+
+    -- Gửi tín hiệu đánh từng mục tiêu
+    for _, Hit in ipairs(BladeHits) do
+        ReplicatedStorage.Modules.Net:WaitForChild("RE/RegisterHit"):FireServer(Hit)
+    end
+end
+
+-- Vòng lặp Auto Attack (không gây lag)
+task.spawn(function()
+    while true do
+        module:attack()
+        task.wait(module.AttackSpeed)
+    end
+end)
+
+-- Hiển thị thông báo đẹp hơn
+game.StarterGui:SetCore("SendNotification", {
+    Title = "By: NomDom",
+    Text = "Địt mẹ thằng lồn!",
+    Duration = 5
+})
+
+local Notifications = ReplicatedStorage:FindFirstChild("Notification")
+if Notifications then
+    for _, msg in ipairs({
+        "<Color=Red>NomDom On Top<Color=/>",
+        "<Color=Green>Cảm ơn đã sử dụng script này<Color=/>",
+        "<Color=Yellow>Chúc bạn chơi game vui vẻ<Color=/>"
+    }) do
+        require(Notifications).new(msg):Display()
+    end
+end
